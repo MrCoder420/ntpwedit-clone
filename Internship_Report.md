@@ -58,52 +58,56 @@ Sr. No. | Content | Page No.
 1.5 | Methodology | 5
 **2** | **LITERATURE SURVEY / BACKGROUND** | **7**
 2.1 | Evolution of the Windows Registry | 7
-2.2 | The Security Accounts Manager (SAM) | 8
-2.3 | Existing Solutions and their Limitations | 10
-**3** | **REGISTRY HIVE FORMAT DEEP DIVE** | **12**
-3.1 | Structural Overview | 12
-3.2 | The REGF Header | 14
-3.3 | HBIN Blocks and Cells | 16
-3.4 | Key Nodes (nk) and Value Keys (vk) | 18
-3.5 | Subkey Lists (lf, lh, ri, li) | 20
-**4** | **SYSTEM FLOW AND ARCHITECTURE** | **23**
-4.1 | Overall System Flow | 23
-4.2 | Component-Based Architecture | 25
-4.3 | Functional Flow Diagrams | 27
-**5** | **TECHNICAL IMPLEMENTATION - REGISTRY ENGINE** | **30**
-5.1 | Registry Engine (ntreg.cpp) | 30
-5.2 | Cell Level Access and Pointers | 32
-5.3 | Enumerate Subkeys Logic | 34
-5.4 | Value Key Retrieval | 36
-**6** | **TECHNICAL IMPLEMENTATION - SAM MANAGER** | **38**
-6.1 | SAM Management (sam.cpp) | 38
-6.2 | Path Resolution in SAM | 40
-6.3 | User Account Enumeration | 42
-6.4 | Forensic Analysis of V and F records | 44
-**7** | **WIN32 UI ARCHITECTURE** | **47**
-7.1 | UI Design Philosophy | 47
-7.2 | Main Dialog Implementation | 49
-7.3 | ListView Data Binding | 51
-7.4 | Automatic Path Detection | 53
-**8** | **BUILD SYSTEM AND AUTOMATION** | **55**
-8.1 | MinGW Toolkit Integration | 55
-8.2 | Resource Compilation with windres | 57
-8.3 | Batch Build Logic | 59
-**9** | **RESULTS AND PERFORMANCE** | **62**
-9.1 | Testing Methodology | 62
-9.2 | Functional Verification | 64
-9.3 | Performance Benchmarks | 66
-**10** | **DISCUSSION AND SECURITY** | **68**
-10.1 | Security Implications | 68
-10.2 | Mitigation Strategies | 69
-10.3 | Technical Challenges | 70
-**11** | **CONCLUSION** | **72**
-**12** | **FUTURE SCOPE** | **74**
-**13** | **APPENDICES** | **76**
-13.1 | Appendix A: Source Code (ntreg.h) | 76
-13.2 | Appendix B: Source Code (sam.h) | 79
-13.3 | Appendix C: Resource Script | 82
-**14** | **REFERENCES** | **85**
+2.2 | Windows Security Architecture History | 8
+2.3 | The Security Accounts Manager (SAM) Logic | 10
+2.4 | NTLM vs. Kerberos Authentication | 12
+**3** | **REGISTRY HIVE FORMAT DEEP DIVE** | **14**
+3.1 | Structural Overview | 14
+3.2 | The REGF Header | 15
+3.3 | HBIN Blocks and Cells | 17
+3.4 | Key Nodes (nk) and Value Keys (vk) | 19
+3.5 | Subkey Lists (lf, lh, ri, li) | 21
+**4** | **SYSTEM FLOW AND ARCHITECTURE** | **24**
+4.1 | Overall System Flow | 24
+4.2 | Component-Based Architecture | 26
+4.3 | Data Flow Diagrams | 28
+**5** | **TECHNICAL IMPLEMENTATION - REGISTRY ENGINE** | **31**
+5.1 | Registry Engine (ntreg.cpp) Logic | 31
+5.2 | Cell Level Access and Pointers | 33
+5.3 | Enumerate Subkeys Algorithm | 35
+5.4 | Value Key Retrieval Methods | 37
+**6** | **TECHNICAL IMPLEMENTATION - SAM MANAGER** | **39**
+6.1 | SAM Management (sam.cpp) | 39
+6.2 | Path Resolution and Tree Walking | 41
+6.3 | User Account Enumeration | 43
+6.4 | Forensic Analysis of V and F records | 45
+**7** | **WIN32 UI ARCHITECTURE** | **48**
+7.1 | Dialog-Based Design Philosophy | 48
+7.2 | Main Dialog Message Loop | 50
+7.3 | ListView Data Binding | 52
+7.4 | Automatic Path Detection Logic | 54
+**8** | **BUILD SYSTEM AND AUTOMATION** | **57**
+8.1 | MinGW Toolkit Integration | 57
+8.2 | Static Linking and Portability | 59
+8.3 | Resource Compilation with windres | 61
+**9** | **TROUBLESHOOTING AND FAQ** | **64**
+9.1 | Common Error Codes | 64
+9.2 | Permission and Lock Exceptions | 66
+**10** | **RESULTS AND PERFORMANCE** | **69**
+10.1 | Functional Verification | 69
+10.2 | Performance Benchmarks | 71
+**11** | **DISCUSSION AND SECURITY** | **74**
+**12** | **CONCLUSION** | **76**
+**13** | **FUTURE SCOPE** | **78**
+**14** | **APPENDICES (FULL SOURCE CODE)** | **80**
+14.1 | Appendix A: ntreg.h | 80
+14.2 | Appendix B: ntreg.cpp | 82
+14.3 | Appendix C: sam.h | 86
+14.4 | Appendix D: sam.cpp | 88
+14.5 | Appendix E: main.cpp | 90
+14.6 | Appendix F: crypto.h / crypto.cpp | 94
+14.7 | Appendix G: resource.h / ntpwedit.rc | 96
+**15** | **GLOSSARY AND REFERENCES** | **100**
 
 ---
 
@@ -112,34 +116,42 @@ Sr. No. | Content | Page No.
 ## 1.1 Project Overview
 The Windows Registry is a hierarchical database that stores configuration settings and options on Microsoft Windows operating systems. It contains settings for the hardware, operating system software, most non-operating-system software, users, preferences of the PCs, etc. The registry provides a window into the operation of the runtime system.
 
-One of the most critical parts of the registry is the **Security Accounts Manager (SAM)**. The SAM hive stores local user accounts, passwords (in hashed format), and group memberships. Under normal operating conditions, the SAM hive is locked by the Windows kernel (System process) and cannot be read or modified by standard user-mode applications or even Administrators using the standard `Regedit` tool.
+One of the most critical parts of the registry is the **Security Accounts Manager (SAM)**. The SAM hive stores local user accounts, passwords (in hashed format), and group memberships. Under normal operating conditions, the SAM hive is locked by the Windows kernel (System process) and cannot be read or modified by standard user-mode applications.
 
-The **"NTPWEdit Clone"** project is an endeavor to create a standalone, high-performance C++ application that can read and potentially modify these locked files by accessing them "offline." This means the tool can be used when the operating system is not running, or when the drive is mounted on another system. The clone replicates the core functionality of the original NTPWEdit utility while being built from the ground up with a custom registry parsing engine.
+The **"NTPWEdit Clone"** project is an endeavor to create a standalone, high-performance C++ application that can read and potentially modify these locked files by accessing them "offline." This means the tool can be used when the operating system is not running, or when the drive is mounted on another system.
 
 ## 1.2 Problem Statement
 In the modern computing environment, access control is paramount. However, several scenarios arise where the standard access control mechanisms become a hindrance:
-1.  **Forgotten Credentials**: Users or administrators frequently forget local account passwords, leading to locked systems and data loss.
+1.  **Forgotten Credentials**: Users frequently forget local account passwords.
 2.  **Administrative Lockouts**: Security policies or malware can lead to the disablement of critical administrative accounts.
-3.  **Forensic Investigation**: Security professionals often need to audit account activity and status on dead disks or forensic images without altering the system state via a live boot.
-4.  **Registry Corruption**: Standard OS tools often fail to handle slightly corrupted hives, requiring a more resilient, low-level parser.
+3.  **Forensic Investigation**: Security professionals need to audit account activity on dead disks.
+4.  **Registry Corruption**: Standard OS tools often fail to handle slightly corrupted hives.
 
 ## 1.3 Objectives of the Project
-The primary objectives of the NTPWEdit Clone system are:
-1.  **Develop a Robust Registry Parser**: Create a C++ engine capable of navigating binary hives.
+1.  **Develop a Robust Registry Parser**: Create a C++ engine capable of navigating binary hives (re-implementing `regf`, `hbin`, `nk`, `vk`, `lx` parsing).
 2.  **Bypass Kernel Locks**: Implement file-based access that works on non-active hives.
 3.  **Automate Identification**: Implement logic to automatically find the local system's SAM file.
 4.  **Enumerate Accounts**: Correctily extract user names and their corresponding Relative Identifiers (RIDs).
-5.  **Clean Native UI**: Provide a responsive Win32-based interface for user interaction.
+5.  **Dependency-Free Build**: Ensure the tool can run on any Windows system (XP to 11).
 
 ---
 
-# CHAPTER 2: BACKGROUND
+# CHAPTER 2: BACKGROUND AND LITERATURE SURVEY
 
-## 2.1 The Windows Registry History
-The registry was first seen in Windows 3.1 but was greatly expanded in Windows 95 and Windows NT. It replaces the old `.ini` files used in Windows 3.x. The move to a binary database allowed for better performance, security, and the ability to store complex data types.
+## 2.1 Evolution of the Windows Registry
+Before the Windows Registry, configuration settings were stored in numerous `.ini` files scattered across the system. This lead to "INI hell," where tracking settings was difficult, and performance suffered due to frequent text parsing. With the introduction of Windows NT, Microsoft introduced the Registry—a unified, binary, hierarchical database.
 
-## 2.2 Security Accounts Manager (SAM)
-The SAM is a database file that stores users' passwords. It is used to authenticate local and remote users. It uses cryptographic measures to prevent unauthorized access. The file is located at `%SystemRoot%\System32\config\SAM`.
+## 2.2 Windows Security Architecture History
+Windows security has evolved through several iterations:
+- **Windows NT 3.x/4.0**: Basic SAM-based security, LanMan (LM) hashes.
+- **Windows 2000/XP**: Introduction of Active Directory and Kerberos, but local SAM remained for workgroups.
+- **Windows Vista/7**: User Account Control (UAC) and mandatory integrity levels were added.
+- **Windows 10/11**: Secure Boot, TPM-based protection, and Virtualization-based Security (VBS).
+
+Despite these advancements, the local SAM remains the fallback for all local account authentication.
+
+## 2.3 The Security Accounts Manager (SAM) Logic
+The SAM is a database file in Windows that stores users' passwords. It is located at `%SystemRoot%\System32\config\SAM`. Passwords are never stored in plain text; instead, they are held as LM hashes or NT hashes. Windows uses a "SysKey" to encrypt these hashes before they even touch the disk, adding an extra layer of difficulty for recovery tools.
 
 ---
 
@@ -148,62 +160,42 @@ The SAM is a database file that stores users' passwords. It is used to authentic
 ## 3.1 Structural Overview
 A registry hive is an on-disk file that contains a discrete body of registry keys, subkeys, and values. The format is a complex system of "Cells" and "Bins."
 
-### 3.1.1 Hierarchical Structure
-The registry is structured like a file system:
-- **Keys** are like directories.
-- **Values** are like files.
-- **Data** is the content of the "files".
+A Hive is organized into:
+1.  **Header Page**: The first 4096 bytes.
+2.  **Bins**: Large blocks (usually 4KB multiples) that contain cells.
+3.  **Cells**: The actual data units (Keys, Values, Lists).
 
 ## 3.2 The REGF Header
-The `regf` header is at the very beginning of the file (first 4KB).
+The `regf` header contains the magic "regf", sequence numbers, timestamps, and a root key offset. Our C++ structure `regf_header` maps these fields exactly to the binary layout.
 
-| Field | Offset | Size | Description |
-| --- | --- | --- | --- |
-| id | 0 | 4 | Magic number "regf" |
-| seq1 | 4 | 4 | Sequence number |
-| ver_major | 20 | 4 | Major version |
-| size | 40 | 4 | Total hive size |
-| checksum | 508 | 4 | Header XOR checksum |
+The **Checksum** is calculated by XORing every 4-byte chunk of the header. If the calculation doesn't match the value stored in the header, the hive is considered corrupt by the system.
 
-## 3.3 HBIN Blocks and Cells
-Blocks are 4096-aligned units. Each block contains multiple cells.
-*   **Cells** are the actual data units.
-*   **Signature**: Cells are preceded by their size (negative = alloc, positive = free).
+## 3.3 NK and VK Records
+- **NK (Named Key)**: Represents a key. Includes name, timestamps, and pointers to subkeys and values.
+- **VK (Value Key)**: Represents a value. Includes name, type, and data (or offset to data).
 
 ---
 
-# CHAPTER 5: TECHNICAL IMPLEMENTATION
+# CHAPTER 5: TECHNICAL IMPLEMENTATION - REGISTRY ENGINE
 
 ## 5.1 Registry Engine (ntreg.cpp)
 The implementation of the `Hive` class is where the majority of the low-level complexity resides.
 
-### 5.1.1 Cell Level Access
-Every offset in the registry is relative to the start of the hbin section (4096 bytes).
+### 5.1.1 Offsets and Addressing
+Registry offsets are relative to the start of the first `hbin` block. Our `getOffset` function handles the conversion from these relative offsets to actual memory addresses in our buffer.
 
 ```cpp
 void* Hive::getOffset(DWORD offset) {
-    if (offset == 0xFFFFFFFF) return nullptr;
-    return (char*)buffer + 4096 + offset + 4;
+    if (offset >= data.size()) return nullptr;
+    return &data[offset + 4]; // Skip the 4-byte block size
 }
 ```
 
 ---
 
-# CHAPTER 6: SAM MANAGER
+# CHAPTER 14: APPENDICES (FULL SOURCE CODE)
 
-## 6.1 User Account Enumeration
-The SAM hive stores users in `SAM\Domains\Account\Users\Names`. Each key name here is a username.
-
-## 6.2 Forensic Analysis
-The "V" and "F" records contain the core meta-data:
-- **F-Record**: Timestamps and account control bits.
-- **V-Record**: Username and encrypted password hashes.
-
----
-
-# CHAPTER 13: APPENDICES
-
-## 13.1 Appendix A: Source Code (ntreg.h)
+## 14.1 Appendix A: ntreg.h
 ```cpp
 #ifndef NTREG_H
 #define NTREG_H
@@ -211,6 +203,8 @@ The "V" and "F" records contain the core meta-data:
 #include <windows.h>
 #include <vector>
 #include <string>
+
+#define REG_HEADER_SIZE 4096
 
 #pragma pack(push, 1)
 struct regf_header {
@@ -236,64 +230,345 @@ struct nk_record {
     FILETIME mtime;
     DWORD unknown1;
     DWORD parent_offset;
-    DWORD subkeys_count;
+    DWORD subkey_count;
     DWORD unknown2;
-    DWORD subkeys_list_offset;
+    DWORD subkey_list_offset;
     DWORD unknown3;
-    DWORD values_count;
-    DWORD values_list_offset;
+    DWORD value_count;
+    DWORD value_list_offset;
     DWORD sk_offset;
     DWORD class_offset;
     WORD name_len;
     WORD class_len;
     char name[1];
 };
+
+struct vk_record {
+    char id[2]; // "vk"
+    WORD name_len;
+    DWORD data_len;
+    DWORD data_offset;
+    DWORD type;
+    WORD flags;
+    WORD unknown;
+    char name[1];
+};
+
+struct subkey_entry {
+    DWORD offset;
+    char hash[4];
+};
+
+struct lx_record {
+    char id[2]; // "lf", "lh", "ri", "li"
+    WORD count;
+    subkey_entry entries[1];
+};
 #pragma pack(pop)
 
 class Hive {
 public:
     Hive();
-    bool open(const std::wstring& path);
+    ~Hive();
+    bool open(const std::string& filename);
+    bool save();
+    void close();
     void* getOffset(DWORD offset);
-    DWORD findSubkey(std::string name, DWORD parent_nk = 0);
-    std::vector<std::pair<std::string, DWORD>> enumerateSubkeys(DWORD nk_offset);
-    void* getValueData(DWORD nk_offset, std::string valueName, DWORD* type = nullptr, DWORD* len = nullptr);
+    DWORD getRootOffset() { return header.root_key_offset; }
+    DWORD findSubkey(DWORD parent_nk_offset, const std::string& name);
+    std::vector<std::pair<std::string, DWORD>> enumerateSubkeys(DWORD parent_nk_offset);
+    void* getValueData(DWORD nk_offset, const std::string& value_name, DWORD* out_type = nullptr, DWORD* out_len = nullptr);
+    bool writeBuffer(DWORD offset, void* buf, DWORD len);
+    DWORD calculateChecksum();
 
 private:
-    void* buffer;
-    DWORD bufferSize;
+    std::string filepath;
+    regf_header header;
+    std::vector<char> data;
+    bool is_dirty;
 };
 
 #endif
 ```
 
-## 13.2 Appendix B: Source Code (sam.h)
+## 14.2 Appendix B: ntreg.cpp
+```cpp
+#include "ntreg.h"
+#include <fstream>
+#include <iostream>
+
+Hive::Hive() : is_dirty(false) {
+    memset(&header, 0, sizeof(header));
+}
+
+Hive::~Hive() {
+    close();
+}
+
+bool Hive::open(const std::string& filename) {
+    filepath = filename;
+    std::ifstream fs(filename, std::ios::binary | std::ios::ate);
+    if (!fs.is_open()) return false;
+
+    std::streamsize size = fs.tellg();
+    if (size < REG_HEADER_SIZE) return false;
+
+    fs.seekg(0, std::ios::beg);
+    fs.read((char*)&header, sizeof(header));
+
+    if (strncmp(header.id, "regf", 4) != 0) return false;
+
+    data.resize((size_t)size - REG_HEADER_SIZE);
+    fs.read(data.data(), data.size());
+    
+    return true;
+}
+
+bool Hive::save() {
+    if (!is_dirty) return true;
+    header.checksum = calculateChecksum();
+    std::ofstream fs(filepath, std::ios::binary);
+    if (!fs.is_open()) return false;
+    fs.write((char*)&header, sizeof(header));
+    fs.write(data.data(), data.size());
+    is_dirty = false;
+    return true;
+}
+
+void Hive::close() {
+    if (is_dirty) save();
+    data.clear();
+    memset(&header, 0, sizeof(header));
+}
+
+void* Hive::getOffset(DWORD offset) {
+    if (offset >= data.size()) return nullptr;
+    return &data[offset + 4];
+}
+
+bool Hive::writeBuffer(DWORD offset, void* buf, DWORD len) {
+    if (offset + len > data.size()) return false;
+    memcpy(&data[offset], buf, len);
+    is_dirty = true;
+    return true;
+}
+
+DWORD Hive::findSubkey(DWORD parent_nk_offset, const std::string& name) {
+    auto subkeys = enumerateSubkeys(parent_nk_offset);
+    for (const auto& pair : subkeys) {
+        if (_stricmp(pair.first.c_str(), name.c_str()) == 0) return pair.second;
+    }
+    return 0;
+}
+
+std::vector<std::pair<std::string, DWORD>> Hive::enumerateSubkeys(DWORD parent_nk_offset) {
+    std::vector<std::pair<std::string, DWORD>> result;
+    nk_record* nk = (nk_record*)getOffset(parent_nk_offset);
+    if (!nk || strncmp(nk->id, "nk", 2) != 0) return result;
+    if (nk->subkey_count == 0) return result;
+
+    lx_record* lx = (lx_record*)getOffset(nk->subkey_list_offset);
+    if (!lx) return result;
+
+    if (strncmp(lx->id, "lf", 2) == 0 || strncmp(lx->id, "lh", 2) == 0) {
+        for (int i = 0; i < lx->count; i++) {
+            nk_record* sub_nk = (nk_record*)getOffset(lx->entries[i].offset);
+            if (sub_nk && strncmp(sub_nk->id, "nk", 2) == 0) {
+                std::string sub_name(sub_nk->name, sub_nk->name_len);
+                result.push_back({sub_name, lx->entries[i].offset});
+            }
+        }
+    } else if (strncmp(lx->id, "ri", 2) == 0 || strncmp(lx->id, "li", 2) == 0) {
+        for (int i = 0; i < lx->count; i++) {
+            lx_record* sub_lx = (lx_record*)getOffset(lx->entries[i].offset);
+            if (sub_lx && (strncmp(sub_lx->id, "lf", 2) == 0 || strncmp(sub_lx->id, "lh", 2) == 0)) {
+                for (int j = 0; j < sub_lx->count; j++) {
+                    nk_record* sub_nk = (nk_record*)getOffset(sub_lx->entries[j].offset);
+                    if (sub_nk && strncmp(sub_nk->id, "nk", 2) == 0) {
+                        std::string sub_name(sub_nk->name, sub_nk->name_len);
+                        result.push_back({sub_name, sub_lx->entries[j].offset});
+                    }
+                }
+            }
+        }
+    }
+    return result;
+}
+
+void* Hive::getValueData(DWORD nk_offset, const std::string& value_name, DWORD* out_type, DWORD* out_len) {
+    nk_record* nk = (nk_record*)getOffset(nk_offset);
+    if (!nk || strncmp(nk->id, "nk", 2) != 0 || nk->value_count == 0) return nullptr;
+    DWORD* val_offsets = (DWORD*)getOffset(nk->value_list_offset);
+    if (!val_offsets) return nullptr;
+    for (DWORD i = 0; i < nk->value_count; i++) {
+        vk_record* vk = (vk_record*)getOffset(val_offsets[i]);
+        if (!vk || strncmp(vk->id, "vk", 2) != 0) continue;
+        std::string v_name;
+        if (vk->name_len > 0) v_name.assign(vk->name, vk->name_len);
+        if (v_name == value_name || (value_name.empty() && vk->name_len == 0)) {
+            if (out_type) *out_type = vk->type;
+            if (out_len) *out_len = vk->data_len;
+            if (vk->data_len & 0x80000000) return &vk->data_offset;
+            return getOffset(vk->data_offset);
+        }
+    }
+    return nullptr;
+}
+
+DWORD Hive::calculateChecksum() {
+    DWORD sum = 0;
+    DWORD* p = (DWORD*)&header;
+    for (int i = 0; i < 127; i++) sum ^= p[i];
+    return sum;
+}
+```
+
+## 14.3 Appendix C: sam.h
 ```cpp
 #ifndef SAM_H
 #define SAM_H
 
 #include "ntreg.h"
+#include <vector>
+#include <string>
 
 struct UserEntry {
     std::string username;
     DWORD rid;
-    std::string status;
     DWORD nk_offset;
 };
 
 class SAMManager {
 public:
     SAMManager(Hive* hive);
-    std::vector<UserEntry> loadUsers();
-    bool unlockAccount(DWORD rid);
-    bool changePassword(DWORD rid, std::string newPassword);
+    bool loadUsers();
+    const std::vector<UserEntry>& getUsers() const { return users; }
+    DWORD findUserNK(DWORD rid);
 
 private:
     Hive* hive;
-    DWORD findUserNK(DWORD rid);
+    std::vector<UserEntry> users;
 };
 
 #endif
+```
+
+## 14.4 Appendix D: sam.cpp
+```cpp
+#include "sam.h"
+#include <sstream>
+#include <iomanip>
+
+SAMManager::SAMManager(Hive* h) : hive(h) {}
+
+bool SAMManager::loadUsers() {
+    users.clear();
+    DWORD sam = hive->findSubkey(hive->getRootOffset(), "SAM");
+    if (!sam) sam = hive->getRootOffset();
+    DWORD domains = hive->findSubkey(sam, "Domains");
+    if (!domains) return false;
+    DWORD account = hive->findSubkey(domains, "Account");
+    if (!account) return false;
+    DWORD users_key = hive->findSubkey(account, "Users");
+    if (!users_key) return false;
+    DWORD names = hive->findSubkey(users_key, "Names");
+    if (!names) return false;
+    auto name_keys = hive->enumerateSubkeys(names);
+    for (const auto& pair : name_keys) {
+        UserEntry entry;
+        entry.username = pair.first;
+        DWORD type = 0;
+        hive->getValueData(pair.second, "", &type);
+        entry.rid = type;
+        entry.nk_offset = findUserNK(entry.rid);
+        users.push_back(entry);
+    }
+    return !users.empty();
+}
+
+DWORD SAMManager::findUserNK(DWORD rid) {
+    DWORD sam = hive->findSubkey(hive->getRootOffset(), "SAM");
+    if (!sam) sam = hive->getRootOffset();
+    DWORD domains = hive->findSubkey(sam, "Domains");
+    DWORD account = hive->findSubkey(domains, "Account");
+    DWORD users_key = hive->findSubkey(account, "Users");
+    if (!users_key) return 0;
+    char rid_hex[16];
+    sprintf(rid_hex, "%08X", rid);
+    return hive->findSubkey(users_key, rid_hex);
+}
+```
+
+## 14.5 Appendix E: main.cpp
+```cpp
+#include <windows.h>
+#include <commctrl.h>
+#include "resource.h"
+#include "ntreg.h"
+#include "sam.h"
+
+Hive* g_hive = nullptr;
+SAMManager* g_sam = nullptr;
+
+INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+    case WM_INITDIALOG:
+        {
+            HWND hList = GetDlgItem(hwnd, IDC_LIST_USERS);
+            ListView_SetExtendedListViewStyle(hList, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+            LVCOLUMN lvc;
+            lvc.mask = LVCF_TEXT | LVCF_WIDTH;
+            lvc.pszText = (LPWSTR)L"User Name"; lvc.cx = 150; ListView_InsertColumn(hList, 0, &lvc);
+            lvc.pszText = (LPWSTR)L"RID"; lvc.cx = 60; ListView_InsertColumn(hList, 1, &lvc);
+            lvc.pszText = (LPWSTR)L"Status"; lvc.cx = 80; ListView_InsertColumn(hList, 2, &lvc);
+            WCHAR sysDir[MAX_PATH];
+            if (GetSystemDirectory(sysDir, MAX_PATH)) {
+                std::wstring samPath = sysDir;
+                samPath += L"\\config\\SAM";
+                SetDlgItemText(hwnd, IDC_EDIT_PATH, samPath.c_str());
+                PostMessage(hwnd, WM_COMMAND, MAKEWPARAM(IDC_BTN_OPEN, BN_CLICKED), 0);
+            }
+        }
+        return (INT_PTR)TRUE;
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDC_BTN_OPEN:
+            {
+                WCHAR path[MAX_PATH]; GetDlgItemText(hwnd, IDC_EDIT_PATH, path, MAX_PATH);
+                if (g_hive) delete g_hive; if (g_sam) delete g_sam;
+                g_hive = new Hive();
+                char aPath[MAX_PATH]; WideCharToMultiByte(CP_ACP, 0, path, -1, aPath, MAX_PATH, NULL, NULL);
+                if (g_hive->open(aPath)) {
+                    g_sam = new SAMManager(g_hive);
+                    if (g_sam->loadUsers()) {
+                        HWND hList = GetDlgItem(hwnd, IDC_LIST_USERS);
+                        ListView_DeleteAllItems(hList);
+                        const auto& users = g_sam->getUsers();
+                        for (size_t i = 0; i < users.size(); ++i) {
+                            LVITEM lvi = {0}; lvi.mask = LVIF_TEXT; lvi.iItem = (int)i;
+                            WCHAR name[256]; MultiByteToWideChar(CP_ACP, 0, users[i].username.c_str(), -1, name, 256);
+                            lvi.pszText = name; ListView_InsertItem(hList, &lvi);
+                            WCHAR rid[16]; swprintf(rid, 16, L"0x%X", users[i].rid);
+                            ListView_SetItemText(hList, (int)i, 1, rid);
+                            ListView_SetItemText(hList, (int)i, 2, (LPWSTR)L"Loaded");
+                        }
+                    } else MessageBox(hwnd, L"Failed to load users from SAM hive.", L"Error", MB_ICONERROR);
+                } else MessageBox(hwnd, L"Failed to open SAM hive file. Make sure you have Administrator privileges.", L"Error", MB_ICONERROR);
+            }
+            return (INT_PTR)TRUE;
+        case IDC_BTN_EXIT: EndDialog(hwnd, IDOK); return (INT_PTR)TRUE;
+        }
+        break;
+    case WM_CLOSE: EndDialog(hwnd, IDCANCEL); return (INT_PTR)TRUE;
+    }
+    return (INT_PTR)FALSE;
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+    InitCommonControls();
+    return (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN_DIALOG), NULL, DialogProc);
+}
 ```
 
 ---
@@ -305,7 +580,7 @@ private:
 *   **Hive**: A file containing a discrete body of registry data.
 *   **NK (Named Key)**: A record type representing a registry key.
 *   **NT Hash**: An MD4-based hash used by Windows for user authentication.
-*   **RID (Relative Identifier)**: The last part of a SID that uniquely identifies an account within a domain (e.g., 500 for Administrator).
+*   **RID (Relative Identifier)**: The last part of a SID that uniquely identifies an account within a domain.
 *   **SAM (Security Accounts Manager)**: The portion of the registry that manages user and group security.
 *   **VK (Value Key)**: A record type representing a registry value and its data.
 
@@ -315,4 +590,4 @@ private:
 1. Microsoft Corporation, "Windows Registry Reference".
 2. Russinovich, M., "Windows Internals".
 3. Nordahl-Hagen, B., "Offline NT Password & Registry Editor".
-4. Forensics Wiki, "Registry Hive Format".
+4. RFC 1320, "The MD4 Message-Digest Algorithm".
