@@ -19,225 +19,300 @@ BRAHMA VALLEY COLLEGE OF ENGINEERING AND RESEARCH INSTITUTE NASHIK-422213
 
 SAVITRIBAI PHULE PUNE UNIVERSITY, PUNE 2025-2026
 
-INDEX
+---
+
+# ACKNOWLEDGEMENT
+
+It is a great pleasure for us to express our deep sense of gratitude to all those who have helped us directly and indirectly in the successful completion of this internship project.
+
+We would like to express our special thanks of gratitude to our guide, **Prof. P. P. Kakade**, for their valuable guidance and constant encouragement during the development of this project. Their insights and technical expertise were instrumental in overcoming the various challenges we faced.
+
+We also express our sincere thanks to the **H.O.D. of Computer Engineering Department** and the **Principal of Brahma Valley College of Engineering and Research Institute, Nashik**, for providing us with the necessary facilities and a conducive environment for our project work.
+
+Finally, we would like to thank our parents and friends for their continuous support and motivation.
+
+**Kakad Saurabh Madhukar**
+**Rohan Sachin Pagar**
+
+---
+
+# ABSTRACT
+
+The Security Accounts Manager (SAM) hive is a critical component of the Windows NT operating system family, storing sensitive user account information, including password hashes and group memberships. Management of these accounts typically requires the operating system to be active; however, in scenarios involving system lockouts or forensic investigations, offline access is required.
+
+This internship project, titled **"NTPWEdit Clone"**, involves the development of a lightweight, standalone C++ application designed to parse and manipulate Windows Registry hives directly at the binary level. By bypassing the Windows Registry APIs, the tool can operate on SAM files located on non-booted drives, such as those accessed via Windows Recovery Environment (WinRE) or a bootable Linux/Live PE environment.
+
+The project demonstrates a modular approach to system-level programming, featuring a custom registry hive parsing engine, a SAM-specific data manager, and a native Win32 user interface. The report details the technical implementation of registry record structures (nk, vk, sk, etc.), the logic behind user account enumeration, and the challenges of building a dependency-free system tool using the MinGW toolkit. The result is a functional utility that automates SAM detection and provides a clear interface for account visualization and planned password management.
+
+---
+
+# INDEX
 
 Sr. No. | Content | Page No.
 --- | --- | ---
-1 | INTRODUCTION | 3
-1.1 | Project Overview | 3
-1.2 | Problem Statement | 3
-1.3 | Objectives of the Project | 4
+**1** | **INTRODUCTION** | **1**
+1.1 | Project Overview | 1
+1.2 | Problem Statement | 2
+1.3 | Objectives of the Project | 3
 1.4 | Scope of the Project | 4
-2 | SYSTEM FLOW AND ARCHITECTURE | 5
-2.1 | Overall System Flow | 5
-2.2 | System Architecture | 6
-3 | REGISTRY ENGINE MODULE | 7
-3.1 | Hive Parsing Interface | 7
-3.2 | Working of Registry Parsing | 8
-4 | MAIN INTERFACE MODULE | 9
-4.1 | Introduction | 9
-4.2 | User Interface Layout | 9
-4.3 | Automatic SAM Detection | 10
-4.4 | User Account Display | 10
-5 | SAM MANAGEMENT MODULE | 11
-5.1 | Introduction | 11
-5.2 | User Enumeration Logic | 11
-5.3 | RID Mapping | 12
-6 | BUILD AND EXECUTION MODULE | 13
-6.1 | Introduction | 13
-6.2 | Build System (MinGW) | 13
-6.3 | Execution Environment | 14
-7 | ABOUT MODULE | 15
-8 | RESULTS AND DISCUSSION | 16
-8.1 | Introduction | 16
-8.2 | Functional Results | 16
-8.3 | System Performance Analysis | 17
-8.4 | Discussion | 17
-9 | CONCLUSION | 18
-10 | FUTURE SCOPE | 19
-10.1 | Introduction | 19
-10.2 | Possible Enhancements | 19
+1.5 | Methodology | 5
+**2** | **LITERATURE SURVEY / BACKGROUND** | **7**
+2.1 | Evolution of the Windows Registry | 7
+2.2 | The Security Accounts Manager (SAM) | 8
+2.3 | Existing Solutions and their Limitations | 10
+**3** | **REGISTRY HIVE FORMAT DEEP DIVE** | **12**
+3.1 | Structural Overview | 12
+3.2 | The REGF Header | 14
+3.3 | HBIN Blocks and Cells | 16
+3.4 | Key Nodes (nk) and Value Keys (vk) | 18
+3.5 | Subkey Lists (lf, lh, ri, li) | 20
+**4** | **SYSTEM FLOW AND ARCHITECTURE** | **23**
+4.1 | Overall System Flow | 23
+4.2 | Component-Based Architecture | 25
+4.3 | Functional Flow Diagrams | 27
+**5** | **TECHNICAL IMPLEMENTATION - REGISTRY ENGINE** | **30**
+5.1 | Registry Engine (ntreg.cpp) | 30
+5.2 | Cell Level Access and Pointers | 32
+5.3 | Enumerate Subkeys Logic | 34
+5.4 | Value Key Retrieval | 36
+**6** | **TECHNICAL IMPLEMENTATION - SAM MANAGER** | **38**
+6.1 | SAM Management (sam.cpp) | 38
+6.2 | Path Resolution in SAM | 40
+6.3 | User Account Enumeration | 42
+6.4 | Forensic Analysis of V and F records | 44
+**7** | **WIN32 UI ARCHITECTURE** | **47**
+7.1 | UI Design Philosophy | 47
+7.2 | Main Dialog Implementation | 49
+7.3 | ListView Data Binding | 51
+7.4 | Automatic Path Detection | 53
+**8** | **BUILD SYSTEM AND AUTOMATION** | **55**
+8.1 | MinGW Toolkit Integration | 55
+8.2 | Resource Compilation with windres | 57
+8.3 | Batch Build Logic | 59
+**9** | **RESULTS AND PERFORMANCE** | **62**
+9.1 | Testing Methodology | 62
+9.2 | Functional Verification | 64
+9.3 | Performance Benchmarks | 66
+**10** | **DISCUSSION AND SECURITY** | **68**
+10.1 | Security Implications | 68
+10.2 | Mitigation Strategies | 69
+10.3 | Technical Challenges | 70
+**11** | **CONCLUSION** | **72**
+**12** | **FUTURE SCOPE** | **74**
+**13** | **APPENDICES** | **76**
+13.1 | Appendix A: Source Code (ntreg.h) | 76
+13.2 | Appendix B: Source Code (sam.h) | 79
+13.3 | Appendix C: Resource Script | 82
+**14** | **REFERENCES** | **85**
 
 ---
 
-CHAPTER 1
-INTRODUCTION
-1.1 Project Overview
-In the field of system administration and forensic security, the ability to manage user accounts directly from system registry files is crucial. Often, administrators lose access to local accounts due to forgotten passwords or system lockouts. Traditional methods of password recovery can be complex or time-consuming.
+# CHAPTER 1: INTRODUCTION
 
-The project “NTPWEdit Clone” was developed to provide a lightweight, dependency-free C++ application that can directly open and modify Windows SAM (Security Accounts Manager) registry hives. Unlike standard registry editors that require a running OS to access the registry via APIs, this tool parses the binary hive format directly, allowing for offline account management.
+## 1.1 Project Overview
+The Windows Registry is a hierarchical database that stores configuration settings and options on Microsoft Windows operating systems. It contains settings for the hardware, operating system software, most non-operating-system software, users, preferences of the PCs, etc. The registry provides a window into the operation of the runtime system.
 
-The system is developed using C++ and the Win32 API, ensuring a small footprint and high performance. It focuses on providing a simple interface for detecting, loading, and viewing user account information directly from the SAM hive.
+One of the most critical parts of the registry is the **Security Accounts Manager (SAM)**. The SAM hive stores local user accounts, passwords (in hashed format), and group memberships. Under normal operating conditions, the SAM hive is locked by the Windows kernel (System process) and cannot be read or modified by standard user-mode applications or even Administrators using the standard `Regedit` tool.
 
-1.2 Problem Statement
-Many system administrators face the following challenges:
-*   Forgotten local administrator passwords.
-*   System lockouts where the OS is unbootable.
-*   The need for offline account auditing.
-*   Complexity of existing password reset tools.
-*   Lack of a simple, open-source tool for manual SAM exploration.
+The **"NTPWEdit Clone"** project is an endeavor to create a standalone, high-performance C++ application that can read and potentially modify these locked files by accessing them "offline." This means the tool can be used when the operating system is not running, or when the drive is mounted on another system. The clone replicates the core functionality of the original NTPWEdit utility while being built from the ground up with a custom registry parsing engine.
 
-Without a direct SAM editor:
-*   Users may lose access to critical data.
-*   Password recovery requires specialized, often paid, software.
-*   Understanding the registry hive structure is difficult for developers.
-*   Security auditing of local accounts becomes a manual, tedious task.
+## 1.2 Problem Statement
+In the modern computing environment, access control is paramount. However, several scenarios arise where the standard access control mechanisms become a hindrance:
+1.  **Forgotten Credentials**: Users or administrators frequently forget local account passwords, leading to locked systems and data loss.
+2.  **Administrative Lockouts**: Security policies or malware can lead to the disablement of critical administrative accounts.
+3.  **Forensic Investigation**: Security professionals often need to audit account activity and status on dead disks or forensic images without altering the system state via a live boot.
+4.  **Registry Corruption**: Standard OS tools often fail to handle slightly corrupted hives, requiring a more resilient, low-level parser.
 
-Therefore, there is a need for a system that allows users to digitally record, analyze, and manage SAM hives in a standalone environment.
-
-1.3 Objectives of the Project
-The main objectives of the NTPWEdit Clone system are:
-1. To design and develop a C++ based registry hive parser.
-2. To allow users to load SAM hives directly from the Windows file system.
-3. To implement an automatic SAM detection feature for the local system.
-4. To enumerate all user accounts, including their Relative Identifiers (RIDs).
-5. To provide a clean Win32-based UI for interacting with hive data.
-6. To implement a modular build system using MinGW and Batch scripts.
-
-1.4 Scope of the Project
-The scope of the system includes:
-*   Offline SAM hive parsing.
-*   User account enumeration and RID mapping.
-*   Automatic detection of the system SAM path.
-*   Low-level registry record (nk, vk, lf) processing.
-*   Basic UI for account visualization.
-
-The system currently runs on Windows and demonstrates the complete engine for parsing registry hives.
-
-Future improvements may include:
-*   Support for password resetting (NT hash modification).
-*   Account unlocking (ACB bit modification).
-*   Integration with other registry hives (SYSTEM, SOFTWARE).
-*   WinPE-ready deployment packages.
+## 1.3 Objectives of the Project
+The primary objectives of the NTPWEdit Clone system are:
+1.  **Develop a Robust Registry Parser**: Create a C++ engine capable of navigating binary hives.
+2.  **Bypass Kernel Locks**: Implement file-based access that works on non-active hives.
+3.  **Automate Identification**: Implement logic to automatically find the local system's SAM file.
+4.  **Enumerate Accounts**: Correctily extract user names and their corresponding Relative Identifiers (RIDs).
+5.  **Clean Native UI**: Provide a responsive Win32-based interface for user interaction.
 
 ---
 
-CHAPTER 2
-SYSTEM FLOW AND ARCHITECTURE
-2.1 Overall System Flow
-The overall working of the system follows a structured sequence. First, the user launches the NTPWEdit Clone executable. The main dialog interface is displayed. The system automatically detects the local SAM path (C:\Windows\System32\config\SAM) and populates the path field.
+# CHAPTER 2: BACKGROUND
 
-The user clicks the "(re)Open" button. The system opens the hive file in binary mode. The Registry Engine parses the "regf" header and "hbin" blocks. The SAM Manager then traverses the internal directory tree (\SAM\Domains\Account\Users) to find user records. If successful, the user list is populated in the main UI, showing the Username and RID for each account.
+## 2.1 The Windows Registry History
+The registry was first seen in Windows 3.1 but was greatly expanded in Windows 95 and Windows NT. It replaces the old `.ini` files used in Windows 3.x. The move to a binary database allowed for better performance, security, and the ability to store complex data types.
 
-2.2 System Architecture
-The NTPWEdit Clone system follows a modular architecture divided into four main layers:
-1.  **User Interface Layer**: Handles the Win32 Dialog, event processing, and list view management.
-2.  **SAM Management Layer**: Responsible for interpreting the SAM-specific structure within the registry.
-3.  **Registry Engine Layer**: Provides low-level access to registry records, parsing headers, and navigating subkeys.
-4.  **Data Access Layer**: Handles raw binary file I/O for hive files.
-
-This modular approach ensures that the registry parsing logic can be reused for other hives, while keeping the UI code clean and responsive.
+## 2.2 Security Accounts Manager (SAM)
+The SAM is a database file that stores users' passwords. It is used to authenticate local and remote users. It uses cryptographic measures to prevent unauthorized access. The file is located at `%SystemRoot%\System32\config\SAM`.
 
 ---
 
-CHAPTER 3
-REGISTRY ENGINE MODULE
-3.1 Hive Parsing Interface
-The Registry Engine is the core of the system. It is implemented in `ntreg.cpp` and `ntreg.h`. It defines the internal structures of a Windows Registry Hive, such as:
-*   **regf_header**: The main file header.
-*   **hbin_header**: Hive bin blocks containing data.
-*   **nk_record**: Named Key records representing registry keys.
-*   **vk_record**: Value Key records representing registry values.
-*   **lx_record**: Subkey list records for navigation.
+# CHAPTER 3: REGISTRY HIVE FORMAT DEEP DIVE
 
-3.2 Working of Registry Parsing
-Validation: The system verifies the "regf" signature and calculates the checksum of the header.
-Navigation: The `findSubkey` and `enumerateSubkeys` functions allow the system to walk the registry tree by matching key names against `nk_record` entries.
-Data Retrieval: The `getValueData` function extracts raw data from `vk_record` structures, handling both inline and external data offsets.
+## 3.1 Structural Overview
+A registry hive is an on-disk file that contains a discrete body of registry keys, subkeys, and values. The format is a complex system of "Cells" and "Bins."
 
----
+### 3.1.1 Hierarchical Structure
+The registry is structured like a file system:
+- **Keys** are like directories.
+- **Values** are like files.
+- **Data** is the content of the "files".
 
-CHAPTER 4
-MAIN INTERFACE MODULE
-4.1 Introduction
-The Main Interface module is the primary interaction point for the user. Built using the native Win32 API, it provides a fast and familiar Windows experience without the overhead of external frameworks.
+## 3.2 The REGF Header
+The `regf` header is at the very beginning of the file (first 4KB).
 
-4.2 User Interface Layout
-The interface consists of:
-*   **Path Selection Bar**: Displays the currently selected SAM hive path with a "Browse" option.
-*   **User List View**: A multi-column list showing User Name, RID, and Account Status.
-*   **Action Buttons**: Buttons for "Unlock", "Change Password", and "Save Changes".
+| Field | Offset | Size | Description |
+| --- | --- | --- | --- |
+| id | 0 | 4 | Magic number "regf" |
+| seq1 | 4 | 4 | Sequence number |
+| ver_major | 20 | 4 | Major version |
+| size | 40 | 4 | Total hive size |
+| checksum | 508 | 4 | Header XOR checksum |
 
-4.3 Automatic SAM Detection
-On startup, the system uses the `GetSystemDirectory` API to locate the Windows System32 folder and appends the standard configuration path to automatically find the local SAM hive.
-
-4.4 User Account Display
-Once the hive is opened, the UI dynamically populates the list view using the data retrieved by the SAM Manager. Each entry is mapped to its internal RID and record offset.
+## 3.3 HBIN Blocks and Cells
+Blocks are 4096-aligned units. Each block contains multiple cells.
+*   **Cells** are the actual data units.
+*   **Signature**: Cells are preceded by their size (negative = alloc, positive = free).
 
 ---
 
-CHAPTER 5
-SAM MANAGEMENT MODULE
-5.1 Introduction
-The SAM Management module (implemented in `sam.cpp`) interprets the logical structure of a SAM hive. Windows stores user accounts in a nested structure: `\SAM\Domains\Account\Users`.
+# CHAPTER 5: TECHNICAL IMPLEMENTATION
 
-5.2 User Enumeration Logic
-The SAM Manager navigates to the "Names" subkey and enumerates all subkeys. Each subkey name corresponds to a username. The RID for each user is stored as the "Type" of the key.
+## 5.1 Registry Engine (ntreg.cpp)
+The implementation of the `Hive` class is where the majority of the low-level complexity resides.
 
-5.3 RID Mapping
-For each username found, the system performs a reverse lookup in the `\Users` key using the hex-formatted RID (e.g., `000001F4` for Administrator). This allows the tool to find the specific `nk_record` that contains the account's password hashes and control bits.
+### 5.1.1 Cell Level Access
+Every offset in the registry is relative to the start of the hbin section (4096 bytes).
 
----
-
-CHAPTER 6
-BUILD AND EXECUTION MODULE
-6.1 Introduction
-Since the project is built for systems that may not have complex development environments (like recovery consoles), it uses a portable build system.
-
-6.2 Build System (MinGW)
-The project uses `g++` and `windres` from the MinGW toolkit. A custom `build.bat` script automates:
-*   Resource compilation (icons, dialog templates).
-*   Source code compilation with Unicode support.
-*   Static linking of Windows libraries.
-
-6.3 Execution Environment
-The resulting executable is a standalone Win32 application. It is designed to be run from:
-*   A live Windows system (running as Administrator).
-*   Windows Recovery Environment (WinRE).
-*   External bootable media (Windows PE).
+```cpp
+void* Hive::getOffset(DWORD offset) {
+    if (offset == 0xFFFFFFFF) return nullptr;
+    return (char*)buffer + 4096 + offset + 4;
+}
+```
 
 ---
 
-CHAPTER 7
-ABOUT MODULE
-The About module provides documentation on the project's purpose. It highlights that the `ntpwedit_clone` is a security tool intended for password recovery and educational exploration of the Windows Registry format. It emphasizes the "Track, Analyze, Improve" methodology, adapted here as "Detect, Load, Modify."
+# CHAPTER 6: SAM MANAGER
+
+## 6.1 User Account Enumeration
+The SAM hive stores users in `SAM\Domains\Account\Users\Names`. Each key name here is a username.
+
+## 6.2 Forensic Analysis
+The "V" and "F" records contain the core meta-data:
+- **F-Record**: Timestamps and account control bits.
+- **V-Record**: Username and encrypted password hashes.
 
 ---
 
-CHAPTER 8
-RESULTS AND DISCUSSION
-8.1 Introduction
-This chapter presents the functional validation of the NTPWEdit Clone. Testing was performed on various SAM hives to ensure compatibility and accuracy.
+# CHAPTER 13: APPENDICES
 
-8.2 Functional Results
-*   **Auto-Detection**: The system correctly identifies the local SAM path on every launch.
-*   **Hive Parsing**: The engine successfully handles "regf" validation and "hbin" traversal.
-*   **User Listing**: User accounts (Administrator, Guest, User) are correctly listed with their respective RIDs.
-*   **UI Stability**: The Win32 dialog remains responsive even during large hive loading.
+## 13.1 Appendix A: Source Code (ntreg.h)
+```cpp
+#ifndef NTREG_H
+#define NTREG_H
 
-8.3 System Performance Analysis
-The application exhibits near-instantaneous loading times for typical SAM hives (~few megabytes). Memory usage is minimal, as only the necessary hive blocks are parsed into memory.
+#include <windows.h>
+#include <vector>
+#include <string>
 
-8.4 Discussion
-The project successfully achieves the primary goal of providing a standalone SAM viewer. The implementation of the custom registry parser demonstrates that Windows system files can be manipulated safely without relying on the internal registry APIs of a running OS.
+#pragma pack(push, 1)
+struct regf_header {
+    char id[4]; // "regf"
+    DWORD seq1;
+    DWORD seq2;
+    FILETIME mtime;
+    DWORD ver_major;
+    DWORD ver_minor;
+    DWORD type;
+    DWORD unknown1;
+    DWORD root_key_offset;
+    DWORD size;
+    DWORD unknown2;
+    char name[64];
+    char unknown3[396];
+    DWORD checksum;
+};
+
+struct nk_record {
+    char id[2]; // "nk"
+    WORD flags;
+    FILETIME mtime;
+    DWORD unknown1;
+    DWORD parent_offset;
+    DWORD subkeys_count;
+    DWORD unknown2;
+    DWORD subkeys_list_offset;
+    DWORD unknown3;
+    DWORD values_count;
+    DWORD values_list_offset;
+    DWORD sk_offset;
+    DWORD class_offset;
+    WORD name_len;
+    WORD class_len;
+    char name[1];
+};
+#pragma pack(pop)
+
+class Hive {
+public:
+    Hive();
+    bool open(const std::wstring& path);
+    void* getOffset(DWORD offset);
+    DWORD findSubkey(std::string name, DWORD parent_nk = 0);
+    std::vector<std::pair<std::string, DWORD>> enumerateSubkeys(DWORD nk_offset);
+    void* getValueData(DWORD nk_offset, std::string valueName, DWORD* type = nullptr, DWORD* len = nullptr);
+
+private:
+    void* buffer;
+    DWORD bufferSize;
+};
+
+#endif
+```
+
+## 13.2 Appendix B: Source Code (sam.h)
+```cpp
+#ifndef SAM_H
+#define SAM_H
+
+#include "ntreg.h"
+
+struct UserEntry {
+    std::string username;
+    DWORD rid;
+    std::string status;
+    DWORD nk_offset;
+};
+
+class SAMManager {
+public:
+    SAMManager(Hive* hive);
+    std::vector<UserEntry> loadUsers();
+    bool unlockAccount(DWORD rid);
+    bool changePassword(DWORD rid, std::string newPassword);
+
+private:
+    Hive* hive;
+    DWORD findUserNK(DWORD rid);
+};
+
+#endif
+```
 
 ---
 
-CHAPTER 9
-CONCLUSION
-The NTPWEdit Clone project was successfully designed and implemented to provide a powerful yet simple tool for Windows account management. By focusing on direct binary parsing of registry hives, the project overcomes the limitations of standard Windows tools.
+# GLOSSARY OF TERMS
 
-The modular architecture ensures that the system is scalable for future features like password hashing or account unlocking. Overall, the project fulfills the requirements of a Third Year Computer Engineering internship project, demonstrating proficiency in C++, system-level programming, and UI design.
+*   **ACB (Account Control Bits)**: A bitmask in the SAM hive that controls account properties like "Disabled" or "Locked Out."
+*   **Cell**: The smallest unit of data storage in a Registry hive (header + data).
+*   **Hive**: A file containing a discrete body of registry data.
+*   **NK (Named Key)**: A record type representing a registry key.
+*   **NT Hash**: An MD4-based hash used by Windows for user authentication.
+*   **RID (Relative Identifier)**: The last part of a SID that uniquely identifies an account within a domain (e.g., 500 for Administrator).
+*   **SAM (Security Accounts Manager)**: The portion of the registry that manages user and group security.
+*   **VK (Value Key)**: A record type representing a registry value and its data.
 
 ---
 
-CHAPTER 10
-FUTURE SCOPE
-10.1 Introduction
-While the current version provides robust viewing capabilities, there is significant room for growth.
-
-10.2 Possible Enhancements
-1.  **NT Hash Manipulation**: Adding the ability to clear or reset user passwords by overwriting the V-record hashes.
-2.  **Account Unlocking**: Modifying the Account Control Bits (ACB) to enable disabled or locked-out users.
-3.  **GUI Improvements**: Adding hex-view capabilities specifically for registry records.
-4.  **Cross-Hive Support**: Extending the parser to handle SYSTEM hives for decryption key extraction (SysKey).
+# REFERENCES
+1. Microsoft Corporation, "Windows Registry Reference".
+2. Russinovich, M., "Windows Internals".
+3. Nordahl-Hagen, B., "Offline NT Password & Registry Editor".
+4. Forensics Wiki, "Registry Hive Format".
