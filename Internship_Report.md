@@ -258,38 +258,64 @@ The project is built on a modular design pattern to separate concerns.
 2.  **The SAM Manager (`sam.h`/`sam.cpp`)**: This is the logic layer. It "knows" the meaning of the data. It knows where Windows stores user IDs and how to interpret the binary blobs.
 3.  **The UI Controller (`main.cpp`)**: This handles the user's clicks and keyboard input. It sends requests to the SAM Manager and displays the results.
 
----
+## 5.3 Hash Lists and Optimization Strategies (lf, lh, ri, li)
+As the Windows Registry grew in size and complexity, the speed of key resolution became a bottleneck. Moving from simple linear lists to sorted hash lists was a major architectural update.
 
-# CHAPTER 5: TECHNICAL IMPLEMENTATION - REGISTRY ENGINE
+### 5.3.1 The LF (Fast List) and LH (Hash List)
+- **LF Records**: These store the first 4 characters of a subkey's name. When searching for a key named "System", the engine only checks keys whose first 4 bytes match "Syst". This drastically reduces the number of string comparisons.
+- **LH Records**: These use a hash of the key's name instead of just the first 4 bytes. This provides even fewer collisions and faster lookups for keys with similar prefixes.
 
-## 5.1 Registry Engine (ntreg.cpp) Logic Walkthrough
-The `ntreg.cpp` file contains the logic for the `Hive` class. This class is designed to be a high-performance, read-only (with future write capability) registry parser.
-
-One of its most important methods is `enumerateSubkeys`. When you have a folder (Key), you need to know what's inside it. In the registry format, this isn't a simple list; it's a series of "List Records."
-
-## 5.2 Cell Level Access and Binary Pointer Arithmetic
-In systems programming, pointer arithmetic is essential. The `Hive` engine loads the entire file into a memory buffer. When a record says "the data is at offset 0x140", we don't just add 0x140 to the beginning of the file. We have to:
-1.  Skip the 4096-byte header.
-2.  Jump to the offset.
-3.  Skip the 4-byte size prefix.
-
-This logic is encapsulated in the `getOffset` function, providing a safe abstraction for the rest of the program.
+Our `ntreg.cpp` engine implements the specific logic required to parse these binary identifiers and jump to the correct child cell.
 
 ---
 
 # CHAPTER 6: TECHNICAL IMPLEMENTATION - SAM MANAGER
 
 ## 6.1 SAM Management (sam.cpp) Responsibilities
-The `SAMManager` is the "brain" of the application when it comes to account security. While the `Hive` class sees the registry as a generic tree of folders and files, the `SAMManager` sees it as a security database.
+The `SAMManager` is the "brain" of the application when it comes to account security. While the `Hive` class sees the registry as a generic tree of folders and files, the `SAMManager` sees it as a security database. It must understand the "Meaning" of values that would otherwise look like random binary blobs.
 
-For example, when enumerating users, the `SAMManager` doesn't just read keys. It has to understand that under `\SAM\Domains\Account\Users\Names`, each key is a string representing a username, but that key's **Value** (usually the (Default) value) contains a "Type" field which stores the user's RID in binary form.
+## 6.2 Recursive Path Resolution and Tree Walking
+Registry navigation is inherently recursive. To find the account data, the system must perform a coordinated "walk" through the tree.
+1.  **Resolve "SAM"**: Start at the root and find the SAM key.
+2.  **Resolve "Domains"**: Find the Domains subkey under SAM.
+3.  **Resolve "Account"**: Access the Account subkey.
+4.  **Resolve "Users"**: Target the main user container.
+5.  **Resolve "Names"**: List all account names.
+
+This path resolution is implemented iteratively in our SAM module to prevent stack overflows on deeply nested, potentially malicious hives.
+
+## 6.3 User Account Enumeration and RID Mapping
+A common misconception is that the username is the primary identifier for a Windows account. In reality, Windows uses the **RID (Relative Identifier)**.
+- **The Mapping Logic**: The `SAMManager` reads the username keys. Each key has a "Type" attribute (stored in the cell header) that contains the RID.
+- **The Construction**: The RID is converted to an 8-digit uppercase hexadecimal string (e.g., 500 becomes `000001F4`).
+- **The Final Jump**: The tool then looks for a key with that hex name in the `\Users` folder. This key contains the actual security records.
 
 ## 6.4 Forensic Analysis of V and F records
 Windows stores the "real" user data in two values: **V** and **F**.
-*   **V (Variable)**: Contains the username, full name, comment, and the password hashes.
-*   **F (Fixed)**: Contains a 72-byte fixed-length structure with the RID, account control flags (disabled, expired, etc.), and timestamps for last login and last password change.
+*   **V (Variable)**: This is a complex, variable-length record. It starts with a 44-byte header that contains offsets to various fields (Username, Full Name, Comment, Home Directory, Hashes). Our tool parses this header to find the specific segments of the record.
+*   **F (Fixed)**: This is a 72-byte fixed-length structure. It contains:
+    - **Timestamps**: Last login, last password change (8-byte FILETIME).
+    - **Password Expiry**: When the user must next change their password.
+    - **ACB (Account Control Bits)**: A bitmask that we manipulate to unlock accounts.
 
-Understanding these structures allows the tool to display more than just names; it can (in future versions) show exactly when a user last logged in and why their account is locked.
+---
+
+# CHAPTER 8: MEMORY AND PERFORMANCE STRATEGIES
+
+## 8.1 Buffer Safety and Bounds Checking
+Working with binary files is dangerous. A corrupted or malicious hive could have offsets that point outside the file, leading to segmentation faults or "buffer underflow" exploits.
+*   **Safety Layer**: Our `getOffset` function performs a boundary check on every call. If an offset is larger than the total loaded size of the hive, the function returns `nullptr`, and the calling logic gracefully halts the operation.
+*   **Read-Only Integrity**: By default, the tool operates on a memory-copy of the hive. Changes are only committed back to disk if the user explicitly saves, protecting the original system data from accidental corruption.
+
+## 8.2 Memory-Mapped vs. Buffered I/O
+For the current version, we chose **Buffered I/O** (loading the entire hive into RAM).
+- **Pros**: Blazing fast random access; simplified pointer arithmetic.
+- **Cons**: High RAM usage for massive hives (e.g., 500MB+ SOFTWARE hives).
+- **Future Improvement**: Implementing `CreateFileMapping` for "Lazy Loading" of data blocks.
+
+---
+
+# CHAPTER 9: SOFTWARE TESTING AND QUALITY ASSURANCE
 
 ---
 
