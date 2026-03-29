@@ -42,6 +42,24 @@ INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
+        case IDC_BTN_BROWSE:
+            {
+                OPENFILENAME ofn;
+                WCHAR szFile[MAX_PATH] = {0};
+                ZeroMemory(&ofn, sizeof(ofn));
+                ofn.lStructSize = sizeof(ofn);
+                ofn.hwndOwner = hwnd;
+                ofn.lpstrFile = szFile;
+                ofn.nMaxFile = sizeof(szFile);
+                ofn.lpstrFilter = L"SAM Hive\0SAM\0All Files\0*.*\0";
+                ofn.nFilterIndex = 1;
+                ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+                if (GetOpenFileName(&ofn)) {
+                    SetDlgItemText(hwnd, IDC_EDIT_PATH, szFile);
+                }
+            }
+            return (INT_PTR)TRUE;
+
         case IDC_BTN_OPEN:
             {
                 WCHAR path[MAX_PATH];
@@ -89,6 +107,41 @@ INT_PTR CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     MessageBox(hwnd, L"Failed to open SAM hive file. Make sure you have Administrator privileges.", L"Error", MB_ICONERROR);
                 }
             }
+            return (INT_PTR)TRUE;
+
+        case IDC_BTN_UNLOCK:
+            {
+                HWND hList = GetDlgItem(hwnd, IDC_LIST_USERS);
+                int idx = ListView_GetNextItem(hList, -1, LVNI_SELECTED);
+                if (idx != -1 && g_sam) {
+                    const auto& users = g_sam->getUsers();
+                    if (g_sam->unlockUser(users[idx].rid)) {
+                        ListView_SetItemText(hList, idx, 2, (LPWSTR)L"Unlocked");
+                        MessageBox(hwnd, L"Account unlocked successfully. Remember to click 'Save changes'.", L"Success", MB_OK);
+                    } else MessageBox(hwnd, L"Failed to unlock account.", L"Error", MB_ICONERROR);
+                } else MessageBox(hwnd, L"Please select a user first.", L"Warning", MB_ICONWARNING);
+            }
+            return (INT_PTR)TRUE;
+
+        case IDC_BTN_CHANGE:
+            {
+                HWND hList = GetDlgItem(hwnd, IDC_LIST_USERS);
+                int idx = ListView_GetNextItem(hList, -1, LVNI_SELECTED);
+                if (idx != -1 && g_sam) {
+                    if (MessageBox(hwnd, L"Are you sure you want to CLEAR the password for this user?", L"Confirm", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                        if (g_sam->resetPassword(g_sam->getUsers()[idx].rid, L"")) {
+                            ListView_SetItemText(hList, idx, 2, (LPWSTR)L"Password Cleared");
+                            MessageBox(hwnd, L"Password cleared. Remember to click 'Save changes'.", L"Success", MB_OK);
+                        } else MessageBox(hwnd, L"Failed to clear password.", L"Error", MB_ICONERROR);
+                    }
+                } else MessageBox(hwnd, L"Please select a user first.", L"Warning", MB_ICONWARNING);
+            }
+            return (INT_PTR)TRUE;
+
+        case IDC_BTN_SAVE:
+            if (g_hive && g_hive->save()) {
+                MessageBox(hwnd, L"Changes saved to hive successfully.", L"Success", MB_OK);
+            } else MessageBox(hwnd, L"Failed to save changes. Make sure the file is not locked.", L"Error", MB_ICONERROR);
             return (INT_PTR)TRUE;
 
         case IDC_BTN_EXIT:

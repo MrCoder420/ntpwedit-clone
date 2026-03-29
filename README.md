@@ -1,34 +1,47 @@
-# NTPWEdit Clone (CLI Version)
+# NTPWEdit Clone
 
-A lightweight, standalone C++ command-line utility for parsing and manipulating Windows Security Accounts Manager (SAM) hives directly at the binary level.
+A high-performance C++ clone of the popular NTPWEdit tool for editing Windows SAM hives offline.
+
+## New Features (v0.7)
+- **Account Unlocking**: Re-enable disabled local accounts by clearing the ACB bit.
+- **Password Reset**: Clear passwords for any local account (Reset to Blank).
+- **Save Integrity**: Recalculates registry checksums to ensure system compatibility.
+- **Native GUI**: Win32 dialog interface with full row selection and path browsing.
+- **Portable**: Single binary with no external dependencies.
 
 ## Features
-- **Binary Hive Parsing**: Custom-built engine to read `regf` headers, `hbin` blocks, and `nk`/`vk` records.
-- **Offline Access**: Operates directly on the SAM file, allowing usage from Windows PE, recovery environments, or external systems.
-- **Auto-Detection**: Automatically identifies the system's SAM file path.
-- **User Enumeration**: Lists all local accounts with their corresponding Relative Identifiers (RIDs).
-- **Stateless & Portable**: Single executable with no external dependencies (static linking).
 
-## Build Instructions
-Ensure you have MinGW installed and added to your PATH.
-1. Open a command prompt/PowerShell.
-2. Run `.\build.bat`.
-3. The binary `ntpwedit_clone_cli.exe` will be generated in the root directory.
+- **Direct Registry Manipulation**: Operates directly on the SAM registry hive without requiring the Registry Editor.
+- **Automatic SAM Detection**: Automatically detects the system's SAM file path on startup.
+- **Auto-Loading**: Attempts to load the user list immediately upon launch.
+- **User Enumeration**: Lists all user accounts registered in the SAM hive, including their RIDs and status.
+- **Unlock/Change Password**: Architectural support for unlocking accounts and changing passwords (skeleton implemented).
 
-## Usage
-Run the tool as an Administrator to access the live system SAM, or point it to an offline hive file.
+## Screenshots
+
+*(Screenshots of the application UI can be added here)*
+
+## Installation and Building
+
+The project is designed to be built using the MinGW toolkit.
+
+### Prerequisites
+
+- **MinGW-w64**: Ensure you have a MinGW installation (like the one provided with CodeBlocks).
+- **Windows OS**: This tool is specific to the Windows NT family.
+
+### Build Instructions
+
+To build the project, run the provided batch script:
 
 ```powershell
-# Display help
-.\ntpwedit_clone_cli.exe --help
-
-# Auto-detect and list local users
-.\ntpwedit_clone_cli.exe
-
-# Specify a custom SAM path (e.g., from an external drive)
-.\ntpwedit_clone_cli.exe -p D:\Windows\System32\Config\SAM
+cmd /c build.bat
 ```
 
+This will:
+1. Compile the Windows resource file (`ntpwedit.rc`).
+2. Compile and link all C++ source files (`main.cpp`, `ntreg.cpp`, `sam.cpp`, `crypto.cpp`).
+3. Generate the final executable: `ntpwedit_clone.exe`.
 
 ## Usage
 

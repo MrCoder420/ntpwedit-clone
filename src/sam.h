@@ -61,15 +61,14 @@ public:
     
     bool loadUsers();
     const std::vector<UserEntry>& getUsers() const { return users; }
+    DWORD findUserNK(DWORD rid);
 
-    bool unlockAccount(DWORD rid);
-    bool changePassword(DWORD rid, const std::string& newPassword);
+    bool unlockUser(DWORD rid);
+    bool resetPassword(DWORD rid, const std::wstring& newPassword);
 
 private:
     Hive* hive;
     std::vector<UserEntry> users;
-
-    DWORD findUserNK(DWORD rid);
 };
 
 #endif // SAM_H
